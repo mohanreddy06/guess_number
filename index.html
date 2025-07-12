@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Guessing Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="game-card">
+            <div class="header">
+                <h1><i class="fas fa-dice"></i> Number Guessing Game</h1>
+                <p class="subtitle">Guess the number between 1 and 100</p>
+            </div>
+            
+            <div class="game-area">
+                <div class="number-display">
+                    <div class="number-circle">
+                        <span id="currentGuess">?</span>
+                    </div>
+                </div>
+                
+                <div class="input-section">
+                    <div class="input-group">
+                        <input type="number" id="guessInput" placeholder="Enter your guess..." min="1" max="100">
+                        <button id="submitBtn" class="submit-btn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="message-area">
+                    <div id="message" class="message"></div>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <i class="fas fa-trophy"></i>
+                        <span>Attempts: <span id="attempts">0</span></span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Best Score: <span id="bestScore">-</span></span>
+                    </div>
+                </div>
+                
+                <div class="hint-area">
+                    <div class="hint-bar">
+                        <div class="hint-fill" id="hintFill"></div>
+                    </div>
+                    <div class="hint-text" id="hintText">Start guessing!</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="newGameBtn" class="control-btn">
+                    <i class="fas fa-redo"></i> New Game
+                </button>
+                <button id="rulesBtn" class="control-btn">
+                    <i class="fas fa-info-circle"></i> Rules
+                </button>
+            </div>
+        </div>
+        
+        <!-- Rules Modal -->
+        <div id="rulesModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2><i class="fas fa-book"></i> How to Play</h2>
+                <div class="rules-content">
+                    <div class="rule-item">
+                        <i class="fas fa-bullseye"></i>
+                        <p>A random number between 1 and 100 has been generated</p>
+                    </div>
+                    <div class="rule-item">
+                        <i class="fas fa-arrow-up"></i>
+                        <p>If your guess is too low, you'll get a "greater number please" hint</p>
+                    </div>
+                    <div class="rule-item">
+                        <i class="fas fa-arrow-down"></i>
+                        <p>If your guess is too high, you'll get a "lower number please" hint</p>
+                    </div>
+                    <div class="rule-item">
+                        <i class="fas fa-star"></i>
+                        <p>Try to guess the number in as few attempts as possible!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Victory Modal -->
+        <div id="victoryModal" class="modal">
+            <div class="modal-content victory">
+                <h2><i class="fas fa-crown"></i> Congratulations!</h2>
+                <div class="victory-content">
+                    <div class="trophy">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <p>You got it in <span id="finalAttempts">0</span> attempts!</p>
+                    <div class="score-display">
+                        <div class="score-item">
+                            <span class="label">Your Score:</span>
+                            <span class="value" id="currentScore">0</span>
+                        </div>
+                        <div class="score-item">
+                            <span class="label">Best Score:</span>
+                            <span class="value" id="bestScoreDisplay">-</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="playAgainBtn" class="play-again-btn">
+                    <i class="fas fa-play"></i> Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html> 
