@@ -3,6 +3,11 @@ let targetNumber;
 let attempts = 0;
 let bestScore = localStorage.getItem('bestScore') || null;
 let gameActive = true;
+let gameHistory = JSON.parse(localStorage.getItem('gameHistory')) || [];
+let deviceId = localStorage.getItem('deviceId') || generateDeviceId();
+let currentGameStartTime = null;
+let performanceChart = null;
+let currentChartPeriod = '7Days';
 
 // DOM elements
 const guessInput = document.getElementById('guessInput');
@@ -14,13 +19,64 @@ const currentGuessSpan = document.getElementById('currentGuess');
 const hintFill = document.getElementById('hintFill');
 const hintText = document.getElementById('hintText');
 const newGameBtn = document.getElementById('newGameBtn');
+const historyBtn = document.getElementById('historyBtn');
 const rulesBtn = document.getElementById('rulesBtn');
 const rulesModal = document.getElementById('rulesModal');
+const historyModal = document.getElementById('historyModal');
 const victoryModal = document.getElementById('victoryModal');
 const finalAttemptsSpan = document.getElementById('finalAttempts');
 const currentScoreSpan = document.getElementById('currentScore');
 const bestScoreDisplaySpan = document.getElementById('bestScoreDisplay');
 const playAgainBtn = document.getElementById('playAgainBtn');
+const exportHistoryBtn = document.getElementById('exportHistoryBtn');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const chart7DaysBtn = document.getElementById('chart7Days');
+const chart30DaysBtn = document.getElementById('chart30Days');
+const chartAllBtn = document.getElementById('chartAll');
+
+// Generate unique device ID
+function generateDeviceId() {
+    const id = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    localStorage.setItem('deviceId', id);
+    return id;
+}
+
+// Save game to history
+function saveGameToHistory(score, isBest = false) {
+    const gameRecord = {
+        id: Date.now(),
+        deviceId: deviceId,
+        score: score,
+        date: new Date().toISOString(),
+        timestamp: Date.now(),
+        isBest: isBest
+    };
+    
+    gameHistory.unshift(gameRecord); // Add to beginning of array
+    
+    // Keep only last 50 games to prevent localStorage from getting too large
+    if (gameHistory.length > 50) {
+        gameHistory = gameHistory.slice(0, 50);
+    }
+    
+    localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
+}
+
+// Get device-specific history
+function getDeviceHistory() {
+    return gameHistory.filter(game => game.deviceId === deviceId);
+}
+
+// Calculate statistics
+function calculateStats() {
+    const deviceHistory = getDeviceHistory();
+    const totalGames = deviceHistory.length;
+    const bestScoreHistory = deviceHistory.length > 0 ? Math.min(...deviceHistory.map(g => g.score)) : null;
+    const avgScore = deviceHistory.length > 0 ? 
+        Math.round(deviceHistory.reduce((sum, game) => sum + game.score, 0) / totalGames) : null;
+    
+    return { totalGames, bestScoreHistory, avgScore };
+}
 
 // Initialize the game
 function initGame() {
@@ -28,6 +84,7 @@ function initGame() {
     targetNumber = Math.floor(Math.random() * 100) + 1;
     attempts = 0;
     gameActive = true;
+    currentGameStartTime = Date.now();
     
     // Reset UI
     updateAttempts();
@@ -121,12 +178,18 @@ function handleGuess() {
         guessInput.disabled = true;
         submitBtn.disabled = true;
         
+        // Check if this is a new best score
+        const isNewBest = !bestScore || attempts < bestScore;
+        
         // Update best score
-        if (!bestScore || attempts < bestScore) {
+        if (isNewBest) {
             bestScore = attempts;
             localStorage.setItem('bestScore', bestScore);
             bestScoreSpan.textContent = bestScore;
         }
+        
+        // Save game to history
+        saveGameToHistory(attempts, isNewBest);
         
         // Show victory modal after a short delay
         setTimeout(() => {
@@ -163,6 +226,323 @@ function hideRulesModal() {
     rulesModal.style.display = 'none';
 }
 
+// Show history modal
+function showHistoryModal() {
+    updateHistoryDisplay();
+    historyModal.style.display = 'block';
+}
+
+// Hide history modal
+function hideHistoryModal() {
+    historyModal.style.display = 'none';
+}
+
+// Update history display
+function updateHistoryDisplay() {
+    const deviceHistory = getDeviceHistory();
+    const stats = calculateStats();
+    
+    // Update statistics
+    document.getElementById('totalGames').textContent = stats.totalGames;
+    document.getElementById('bestScoreHistory').textContent = stats.bestScoreHistory || '-';
+    document.getElementById('avgScore').textContent = stats.avgScore || '-';
+    
+    // Update performance chart
+    updatePerformanceChart(currentChartPeriod);
+    
+    // Update history list
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = '';
+    
+    if (deviceHistory.length === 0) {
+        historyList.innerHTML = `
+            <div class="empty-history">
+                <i class="fas fa-gamepad"></i>
+                <p>No games played yet. Start playing to see your history!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Show last 10 games
+    const recentGames = deviceHistory.slice(0, 10);
+    recentGames.forEach(game => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        
+        const date = new Date(game.date);
+        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        const badgeClass = game.isBest ? 'history-item-badge best' : 'history-item-badge';
+        const badgeIcon = game.isBest ? 'fas fa-trophy' : 'fas fa-star';
+        
+        historyItem.innerHTML = `
+            <div class="history-item-info">
+                <div class="history-item-date">${formattedDate}</div>
+                <div class="history-item-score">${game.score} attempts</div>
+            </div>
+            <div class="${badgeClass}">
+                <i class="${badgeIcon}"></i>
+                ${game.isBest ? 'Best' : 'Score'}
+            </div>
+        `;
+        
+        historyList.appendChild(historyItem);
+    });
+}
+
+// Clear history
+function clearHistory() {
+    if (confirm('Are you sure you want to clear all game history? This action cannot be undone.')) {
+        gameHistory = gameHistory.filter(game => game.deviceId !== deviceId);
+        localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
+        updateHistoryDisplay();
+    }
+}
+
+// Update chart button states
+function updateChartButtons(activePeriod) {
+    // Remove active class from all buttons
+    chart7DaysBtn.classList.remove('active');
+    chart30DaysBtn.classList.remove('active');
+    chartAllBtn.classList.remove('active');
+    
+    // Add active class to selected button
+    switch (activePeriod) {
+        case '7Days':
+            chart7DaysBtn.classList.add('active');
+            break;
+        case '30Days':
+            chart30DaysBtn.classList.add('active');
+            break;
+        case 'All':
+            chartAllBtn.classList.add('active');
+            break;
+    }
+}
+
+// Export history data
+function exportHistory() {
+    const deviceHistory = getDeviceHistory();
+    if (deviceHistory.length === 0) {
+        alert('No history to export!');
+        return;
+    }
+    
+    const dataStr = JSON.stringify(deviceHistory, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `game-history-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Get additional statistics
+function getDetailedStats() {
+    const deviceHistory = getDeviceHistory();
+    if (deviceHistory.length === 0) return null;
+    
+    const scores = deviceHistory.map(g => g.score);
+    const totalGames = deviceHistory.length;
+    const bestScore = Math.min(...scores);
+    const worstScore = Math.max(...scores);
+    const avgScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / totalGames);
+    
+    // Calculate median
+    const sortedScores = [...scores].sort((a, b) => a - b);
+    const median = sortedScores.length % 2 === 0 
+        ? (sortedScores[sortedScores.length / 2 - 1] + sortedScores[sortedScores.length / 2]) / 2
+        : sortedScores[Math.floor(sortedScores.length / 2)];
+    
+    // Calculate games in last 7 days
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const recentGames = deviceHistory.filter(g => g.timestamp > sevenDaysAgo).length;
+    
+    return {
+        totalGames,
+        bestScore,
+        worstScore,
+        avgScore: Math.round(avgScore),
+        median: Math.round(median),
+        recentGames
+    };
+}
+
+// Prepare chart data based on time period
+function prepareChartData(period = '7Days') {
+    const deviceHistory = getDeviceHistory();
+    if (deviceHistory.length === 0) return { labels: [], scores: [] };
+    
+    let filteredHistory = [...deviceHistory];
+    const now = Date.now();
+    
+    // Filter by time period
+    switch (period) {
+        case '7Days':
+            const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+            filteredHistory = deviceHistory.filter(g => g.timestamp > sevenDaysAgo);
+            break;
+        case '30Days':
+            const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+            filteredHistory = deviceHistory.filter(g => g.timestamp > thirtyDaysAgo);
+            break;
+        case 'All':
+            // Use all data
+            break;
+    }
+    
+    if (filteredHistory.length === 0) return { labels: [], scores: [] };
+    
+    // Sort by date and take last 20 games for better visualization
+    const sortedHistory = filteredHistory
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .slice(-20);
+    
+    const labels = sortedHistory.map(game => {
+        const date = new Date(game.date);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    });
+    
+    const scores = sortedHistory.map(game => game.score);
+    
+    return { labels, scores };
+}
+
+// Create or update performance chart
+function updatePerformanceChart(period = '7Days') {
+    const ctx = document.getElementById('performanceChart');
+    if (!ctx) return;
+    
+    const { labels, scores } = prepareChartData(period);
+    
+    if (performanceChart) {
+        performanceChart.destroy();
+    }
+    
+    if (labels.length === 0) {
+        // Show empty state
+        ctx.style.display = 'none';
+        const chartContainer = ctx.parentElement;
+        if (!chartContainer.querySelector('.empty-chart')) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-chart';
+            emptyDiv.innerHTML = `
+                <i class="fas fa-chart-line"></i>
+                <p>No data available for this time period</p>
+            `;
+            chartContainer.appendChild(emptyDiv);
+        }
+        return;
+    }
+    
+    // Remove empty state if it exists
+    const emptyChart = ctx.parentElement.querySelector('.empty-chart');
+    if (emptyChart) {
+        emptyChart.remove();
+    }
+    
+    ctx.style.display = 'block';
+    
+    performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score (Attempts)',
+                data: scores,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                pointHoverBackgroundColor: '#1d4ed8',
+                pointHoverBorderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            return `Score: ${context.parsed.y} attempts`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(59, 130, 246, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#64748b',
+                        font: {
+                            size: 11
+                        },
+                        maxRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(59, 130, 246, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#64748b',
+                        font: {
+                            size: 12
+                        },
+                        callback: function(value) {
+                            return value + ' attempts';
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            elements: {
+                point: {
+                    hoverRadius: 8
+                }
+            }
+        }
+    });
+}
+
 // Start new game
 function startNewGame() {
     hideVictoryModal();
@@ -179,13 +559,36 @@ guessInput.addEventListener('keypress', (e) => {
 });
 
 newGameBtn.addEventListener('click', startNewGame);
+historyBtn.addEventListener('click', showHistoryModal);
 rulesBtn.addEventListener('click', showRulesModal);
 playAgainBtn.addEventListener('click', startNewGame);
+exportHistoryBtn.addEventListener('click', exportHistory);
+clearHistoryBtn.addEventListener('click', clearHistory);
+
+// Chart period button event listeners
+chart7DaysBtn.addEventListener('click', () => {
+    currentChartPeriod = '7Days';
+    updateChartButtons('7Days');
+    updatePerformanceChart('7Days');
+});
+
+chart30DaysBtn.addEventListener('click', () => {
+    currentChartPeriod = '30Days';
+    updateChartButtons('30Days');
+    updatePerformanceChart('30Days');
+});
+
+chartAllBtn.addEventListener('click', () => {
+    currentChartPeriod = 'All';
+    updateChartButtons('All');
+    updatePerformanceChart('All');
+});
 
 // Modal close functionality
 document.querySelectorAll('.close').forEach(closeBtn => {
     closeBtn.addEventListener('click', () => {
         hideRulesModal();
+        hideHistoryModal();
     });
 });
 
@@ -193,6 +596,9 @@ document.querySelectorAll('.close').forEach(closeBtn => {
 window.addEventListener('click', (e) => {
     if (e.target === rulesModal) {
         hideRulesModal();
+    }
+    if (e.target === historyModal) {
+        hideHistoryModal();
     }
     if (e.target === victoryModal) {
         hideVictoryModal();
@@ -278,9 +684,49 @@ function celebrateVictory() {
     console.log('🎉 Congratulations! 🏆✨');
 }
 
+// Generate sample data for testing (remove in production)
+function generateSampleData() {
+    if (gameHistory.length > 0) return; // Only generate if no data exists
+    
+    const sampleGames = [];
+    const now = Date.now();
+    const dayInMs = 24 * 60 * 60 * 1000;
+    
+    // Generate 15 sample games over the last 30 days
+    for (let i = 0; i < 15; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        const timestamp = now - (daysAgo * dayInMs);
+        const score = Math.floor(Math.random() * 20) + 5; // Random score between 5-25
+        
+        sampleGames.push({
+            id: timestamp + i,
+            deviceId: deviceId,
+            score: score,
+            date: new Date(timestamp).toISOString(),
+            timestamp: timestamp,
+            isBest: false
+        });
+    }
+    
+    // Sort by timestamp and mark the best score
+    sampleGames.sort((a, b) => a.timestamp - b.timestamp);
+    const bestScore = Math.min(...sampleGames.map(g => g.score));
+    sampleGames.forEach(game => {
+        if (game.score === bestScore) {
+            game.isBest = true;
+        }
+    });
+    
+    gameHistory = sampleGames;
+    localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
+}
+
 // Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
+    
+    // Generate sample data for testing (remove this line in production)
+    generateSampleData();
     
     // Add some initial animations
     setTimeout(() => {
@@ -293,6 +739,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'n' && e.ctrlKey) {
         e.preventDefault();
         startNewGame();
+    }
+    if (e.key === 'h' && e.ctrlKey) {
+        e.preventDefault();
+        showHistoryModal();
     }
     if (e.key === 'r' && e.ctrlKey) {
         e.preventDefault();

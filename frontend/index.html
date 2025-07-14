@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -58,6 +59,9 @@
             <div class="controls">
                 <button id="newGameBtn" class="control-btn">
                     <i class="fas fa-redo"></i> New Game
+                </button>
+                <button id="historyBtn" class="control-btn">
+                    <i class="fas fa-history"></i> History
                 </button>
                 <button id="rulesBtn" class="control-btn">
                     <i class="fas fa-info-circle"></i> Rules
@@ -114,6 +118,67 @@
                 <button id="playAgainBtn" class="play-again-btn">
                     <i class="fas fa-play"></i> Play Again
                 </button>
+            </div>
+        </div>
+        
+        <!-- History Modal -->
+        <div id="historyModal" class="modal">
+            <div class="modal-content history">
+                <div class="modal-header">
+                    <h2><i class="fas fa-history"></i> Game History</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="history-content">
+                    <div class="history-stats">
+                        <div class="stat-card">
+                            <i class="fas fa-gamepad"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="totalGames">0</span>
+                                <span class="stat-label">Total Games</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-trophy"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="bestScoreHistory">-</span>
+                                <span class="stat-label">Best Score</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-chart-line"></i>
+                            <div class="stat-info">
+                                <span class="stat-value" id="avgScore">-</span>
+                                <span class="stat-label">Avg Score</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-section">
+                        <h3><i class="fas fa-chart-area"></i> Performance Chart</h3>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                        <div class="chart-controls">
+                            <button id="chart7Days" class="chart-btn active">7 Days</button>
+                            <button id="chart30Days" class="chart-btn">30 Days</button>
+                            <button id="chartAll" class="chart-btn">All Time</button>
+                        </div>
+                    </div>
+                    <div class="history-list">
+                        <h3><i class="fas fa-list"></i> Recent Games</h3>
+                        <div id="historyList" class="history-items">
+                            <!-- History items will be populated here -->
+                        </div>
+                    </div>
+                    <div class="history-actions">
+                        <button id="exportHistoryBtn" class="export-history-btn">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                        <button id="clearHistoryBtn" class="clear-history-btn">
+                            <i class="fas fa-trash"></i> Clear History
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
