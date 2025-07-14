@@ -30,15 +30,54 @@ const bestScoreDisplaySpan = document.getElementById('bestScoreDisplay');
 const playAgainBtn = document.getElementById('playAgainBtn');
 const exportHistoryBtn = document.getElementById('exportHistoryBtn');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const resetDeviceBtn = document.getElementById('resetDeviceBtn');
 const chart7DaysBtn = document.getElementById('chart7Days');
 const chart30DaysBtn = document.getElementById('chart30Days');
 const chartAllBtn = document.getElementById('chartAll');
 
-// Generate unique device ID
+// Generate unique device ID with enhanced uniqueness
 function generateDeviceId() {
-    const id = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    // Create a more unique identifier using multiple factors
+    const userAgent = navigator.userAgent;
+    const screenRes = `${screen.width}x${screen.height}`;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const language = navigator.language;
+    
+    // Create a hash-like string from these factors
+    const deviceFingerprint = `${userAgent}_${screenRes}_${timeZone}_${language}`;
+    const hash = btoa(deviceFingerprint).replace(/[^a-zA-Z0-9]/g, '').substr(0, 16);
+    
+    const id = 'device_' + hash + '_' + Date.now();
     localStorage.setItem('deviceId', id);
     return id;
+}
+
+// Check if this is a new device/user
+function isNewDevice() {
+    const storedDeviceId = localStorage.getItem('deviceId');
+    const currentDeviceId = generateDeviceId();
+    
+    // If no stored device ID, this is a new device
+    if (!storedDeviceId) {
+        return true;
+    }
+    
+    // Check if device characteristics have changed significantly
+    const userAgent = navigator.userAgent;
+    const screenRes = `${screen.width}x${screen.height}`;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const language = navigator.language;
+    
+    const currentFingerprint = `${userAgent}_${screenRes}_${timeZone}_${language}`;
+    const storedFingerprint = localStorage.getItem('deviceFingerprint');
+    
+    if (storedFingerprint !== currentFingerprint) {
+        // Device characteristics changed, treat as new device
+        localStorage.setItem('deviceFingerprint', currentFingerprint);
+        return true;
+    }
+    
+    return false;
 }
 
 // Save game to history
@@ -247,6 +286,12 @@ function updateHistoryDisplay() {
     document.getElementById('bestScoreHistory').textContent = stats.bestScoreHistory || '-';
     document.getElementById('avgScore').textContent = stats.avgScore || '-';
     
+    // Update device ID display
+    const deviceIdDisplay = document.getElementById('currentDeviceId');
+    if (deviceIdDisplay) {
+        deviceIdDisplay.textContent = deviceId.substring(0, 20) + '...';
+    }
+    
     // Update performance chart
     updatePerformanceChart(currentChartPeriod);
     
@@ -296,7 +341,29 @@ function clearHistory() {
     if (confirm('Are you sure you want to clear all game history? This action cannot be undone.')) {
         gameHistory = gameHistory.filter(game => game.deviceId !== deviceId);
         localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
+        
+        // Also clear best score for this device
+        localStorage.removeItem('bestScore');
+        bestScore = null;
+        bestScoreSpan.textContent = '-';
+        
         updateHistoryDisplay();
+    }
+}
+
+// Reset device (for testing purposes)
+function resetDevice() {
+    if (confirm('This will reset all data for this device and treat it as a new device. Continue?')) {
+        // Clear device ID and fingerprint
+        localStorage.removeItem('deviceId');
+        localStorage.removeItem('deviceFingerprint');
+        
+        // Clear all history
+        localStorage.removeItem('gameHistory');
+        localStorage.removeItem('bestScore');
+        
+        // Reload page to reinitialize
+        location.reload();
     }
 }
 
@@ -564,6 +631,7 @@ rulesBtn.addEventListener('click', showRulesModal);
 playAgainBtn.addEventListener('click', startNewGame);
 exportHistoryBtn.addEventListener('click', exportHistory);
 clearHistoryBtn.addEventListener('click', clearHistory);
+resetDeviceBtn.addEventListener('click', resetDevice);
 
 // Chart period button event listeners
 chart7DaysBtn.addEventListener('click', () => {
@@ -721,8 +789,89 @@ function generateSampleData() {
     localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
 }
 
+// Initialize device and history for new users
+function initializeNewDevice() {
+    // Clear any existing history for this device
+    const existingHistory = JSON.parse(localStorage.getItem('gameHistory')) || [];
+    const filteredHistory = existingHistory.filter(game => game.deviceId !== deviceId);
+    localStorage.setItem('gameHistory', JSON.stringify(filteredHistory));
+    
+    // Reset best score for new device
+    localStorage.removeItem('bestScore');
+    bestScore = null;
+    
+    // Clear game history array
+    gameHistory = [];
+    
+    // Store device fingerprint
+    const userAgent = navigator.userAgent;
+    const screenRes = `${screen.width}x${screen.height}`;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const language = navigator.language;
+    const currentFingerprint = `${userAgent}_${screenRes}_${timeZone}_${language}`;
+    localStorage.setItem('deviceFingerprint', currentFingerprint);
+    
+    // Show welcome message for new device
+    showNewDeviceNotification();
+    
+    console.log('New device detected - history cleared');
+}
+
+// Show notification for new device
+function showNewDeviceNotification() {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'new-device-notification';
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i class="fas fa-user-plus"></i>
+            <div class="notification-text">
+                <h4>Welcome to a New Device!</h4>
+                <p>Your game history has been reset for this device. Each device maintains its own separate history.</p>
+            </div>
+            <button class="notification-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Show notification
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 1000);
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 8000);
+    
+    // Close button functionality
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    });
+}
+
 // Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if this is a new device
+    if (isNewDevice()) {
+        initializeNewDevice();
+    }
+    
     initGame();
     
     // Generate sample data for testing (remove this line in production)
@@ -747,6 +896,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'r' && e.ctrlKey) {
         e.preventDefault();
         showRulesModal();
+    }
+    if (e.key === 'd' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        resetDevice();
     }
 });
 
