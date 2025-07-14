@@ -35,19 +35,9 @@ const chart7DaysBtn = document.getElementById('chart7Days');
 const chart30DaysBtn = document.getElementById('chart30Days');
 const chartAllBtn = document.getElementById('chartAll');
 
-// Generate unique device ID with enhanced uniqueness
+// Generate unique device ID
 function generateDeviceId() {
-    // Create a more unique identifier using multiple factors
-    const userAgent = navigator.userAgent;
-    const screenRes = `${screen.width}x${screen.height}`;
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const language = navigator.language;
-    
-    // Create a hash-like string from these factors
-    const deviceFingerprint = `${userAgent}_${screenRes}_${timeZone}_${language}`;
-    const hash = btoa(deviceFingerprint).replace(/[^a-zA-Z0-9]/g, '').substr(0, 16);
-    
-    const id = 'device_' + hash + '_' + Date.now();
+    const id = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
     localStorage.setItem('deviceId', id);
     return id;
 }
@@ -80,7 +70,7 @@ function isNewDevice() {
     return false;
 }
 
-// Save game to history
+// --- HISTORY LOGIC: use deviceId instead of userId ---
 function saveGameToHistory(score, isBest = false) {
     const gameRecord = {
         id: Date.now(),
@@ -90,30 +80,21 @@ function saveGameToHistory(score, isBest = false) {
         timestamp: Date.now(),
         isBest: isBest
     };
-    
-    gameHistory.unshift(gameRecord); // Add to beginning of array
-    
-    // Keep only last 50 games to prevent localStorage from getting too large
-    if (gameHistory.length > 50) {
-        gameHistory = gameHistory.slice(0, 50);
-    }
-    
+    gameHistory.unshift(gameRecord);
+    if (gameHistory.length > 50) gameHistory = gameHistory.slice(0, 50);
     localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
 }
 
-// Get device-specific history
 function getDeviceHistory() {
     return gameHistory.filter(game => game.deviceId === deviceId);
 }
 
-// Calculate statistics
 function calculateStats() {
     const deviceHistory = getDeviceHistory();
     const totalGames = deviceHistory.length;
     const bestScoreHistory = deviceHistory.length > 0 ? Math.min(...deviceHistory.map(g => g.score)) : null;
     const avgScore = deviceHistory.length > 0 ? 
         Math.round(deviceHistory.reduce((sum, game) => sum + game.score, 0) / totalGames) : null;
-    
     return { totalGames, bestScoreHistory, avgScore };
 }
 
@@ -278,7 +259,7 @@ function hideHistoryModal() {
 
 // Update history display
 function updateHistoryDisplay() {
-    const deviceHistory = getDeviceHistory();
+    const userHistory = getDeviceHistory();
     const stats = calculateStats();
     
     // Update statistics
@@ -299,7 +280,7 @@ function updateHistoryDisplay() {
     const historyList = document.getElementById('historyList');
     historyList.innerHTML = '';
     
-    if (deviceHistory.length === 0) {
+    if (userHistory.length === 0) {
         historyList.innerHTML = `
             <div class="empty-history">
                 <i class="fas fa-gamepad"></i>
@@ -310,7 +291,7 @@ function updateHistoryDisplay() {
     }
     
     // Show last 10 games
-    const recentGames = deviceHistory.slice(0, 10);
+    const recentGames = userHistory.slice(0, 10);
     recentGames.forEach(game => {
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
@@ -339,6 +320,7 @@ function updateHistoryDisplay() {
 // Clear history
 function clearHistory() {
     if (confirm('Are you sure you want to clear all game history? This action cannot be undone.')) {
+        // Clear all history for this device
         gameHistory = gameHistory.filter(game => game.deviceId !== deviceId);
         localStorage.setItem('gameHistory', JSON.stringify(gameHistory));
         
@@ -390,13 +372,13 @@ function updateChartButtons(activePeriod) {
 
 // Export history data
 function exportHistory() {
-    const deviceHistory = getDeviceHistory();
-    if (deviceHistory.length === 0) {
+    const userHistory = getDeviceHistory();
+    if (userHistory.length === 0) {
         alert('No history to export!');
         return;
     }
     
-    const dataStr = JSON.stringify(deviceHistory, null, 2);
+    const dataStr = JSON.stringify(userHistory, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
     const url = URL.createObjectURL(dataBlob);
     
@@ -411,11 +393,11 @@ function exportHistory() {
 
 // Get additional statistics
 function getDetailedStats() {
-    const deviceHistory = getDeviceHistory();
-    if (deviceHistory.length === 0) return null;
+    const userHistory = getDeviceHistory();
+    if (userHistory.length === 0) return null;
     
-    const scores = deviceHistory.map(g => g.score);
-    const totalGames = deviceHistory.length;
+    const scores = userHistory.map(g => g.score);
+    const totalGames = userHistory.length;
     const bestScore = Math.min(...scores);
     const worstScore = Math.max(...scores);
     const avgScore = Math.round(scores.reduce((sum, score) => sum + score, 0) / totalGames);
@@ -428,7 +410,7 @@ function getDetailedStats() {
     
     // Calculate games in last 7 days
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const recentGames = deviceHistory.filter(g => g.timestamp > sevenDaysAgo).length;
+    const recentGames = userHistory.filter(g => g.timestamp > sevenDaysAgo).length;
     
     return {
         totalGames,
@@ -442,21 +424,21 @@ function getDetailedStats() {
 
 // Prepare chart data based on time period
 function prepareChartData(period = '7Days') {
-    const deviceHistory = getDeviceHistory();
-    if (deviceHistory.length === 0) return { labels: [], scores: [] };
+    const userHistory = getDeviceHistory();
+    if (userHistory.length === 0) return { labels: [], scores: [] };
     
-    let filteredHistory = [...deviceHistory];
+    let filteredHistory = [...userHistory];
     const now = Date.now();
     
     // Filter by time period
     switch (period) {
         case '7Days':
             const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-            filteredHistory = deviceHistory.filter(g => g.timestamp > sevenDaysAgo);
+            filteredHistory = userHistory.filter(g => g.timestamp > sevenDaysAgo);
             break;
         case '30Days':
             const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-            filteredHistory = deviceHistory.filter(g => g.timestamp > thirtyDaysAgo);
+            filteredHistory = userHistory.filter(g => g.timestamp > thirtyDaysAgo);
             break;
         case 'All':
             // Use all data
@@ -768,7 +750,7 @@ function generateSampleData() {
         
         sampleGames.push({
             id: timestamp + i,
-            deviceId: deviceId,
+            deviceId: deviceId, // This will be userId from now on
             score: score,
             date: new Date(timestamp).toISOString(),
             timestamp: timestamp,
