@@ -16,6 +16,9 @@ body {
     overflow-x: hidden;
 }
 
+/* Remove animated gradient background */
+/* Remove @keyframes gradientBG */
+
 /* Professional geometric background */
 body::before {
     content: '';
@@ -1223,4 +1226,93 @@ body::before {
 .notification-close:hover {
     color: white;
     background: rgba(255, 255, 255, 0.1);
+} 
+
+/* Welcome Splash Styles */
+.welcome-splash {
+    position: fixed;
+    z-index: 9999;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw; height: 100vh;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e293b 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1);
+    opacity: 1;
+    pointer-events: all;
+}
+.welcome-splash.hide {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.splash-content {
+    text-align: center;
+    background: rgba(255,255,255,0.10);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(59,130,246,0.15);
+    padding: 48px 32px 40px 32px;
+    animation: splashIn 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.splash-logo {
+    margin-bottom: 24px;
+    animation: logoPop 1.2s cubic-bezier(0.16,1,0.3,1);
+}
+.splash-title {
+    color: #fff;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 8px rgba(30,41,59,0.18);
+}
+.splash-tagline {
+    color: #fbbf24;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 32px;
+    text-shadow: 0 1px 4px rgba(30,41,59,0.12);
+}
+.splash-enter-btn {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1e293b;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 14px 38px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(251,191,36,0.18);
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.splash-enter-btn:hover {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 8px 32px rgba(251,191,36,0.22);
+}
+@keyframes splashIn {
+    0% { opacity: 0; transform: scale(0.92) translateY(40px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes logoPop {
+    0% { opacity: 0; transform: scale(0.7) rotate(-10deg); }
+    60% { opacity: 1; transform: scale(1.1) rotate(6deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+body.splash-active {
+    overflow: hidden;
+} 
+
+/* Remove .blob and blob keyframes. Add brain and orbit styles */
+.splash-content { position: relative; z-index: 3; } 
+
+/* === BUTTON GLOW ON HOVER === */
+.submit-btn, .control-btn, .splash-enter-btn, .play-again-btn, .export-history-btn, .clear-history-btn, .reset-device-btn {
+    transition: box-shadow 0.3s, background 0.3s, color 0.3s;
+}
+.submit-btn:hover, .control-btn:hover, .splash-enter-btn:hover, .play-again-btn:hover, .export-history-btn:hover, .clear-history-btn:hover, .reset-device-btn:hover {
+    box-shadow: 0 0 16px 4px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.2);
+    background: linear-gradient(90deg, #3b82f6 60%, #f59e0b 100%);
+    color: #fff;
 } 

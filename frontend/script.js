@@ -793,8 +793,7 @@ function initializeNewDevice() {
     const currentFingerprint = `${userAgent}_${screenRes}_${timeZone}_${language}`;
     localStorage.setItem('deviceFingerprint', currentFingerprint);
     
-    // Show welcome message for new device
-    showNewDeviceNotification();
+    // Removed welcome message for new device
     
     console.log('New device detected - history cleared');
 }
@@ -918,3 +917,31 @@ rainbowStyle.textContent = `
     }
 `;
 document.head.appendChild(rainbowStyle); 
+
+// Splash screen logic
+window.addEventListener('DOMContentLoaded', () => {
+    const splash = document.getElementById('welcomeSplash');
+    const enterBtn = document.getElementById('enterGameBtn');
+    let splashDismissed = false;
+    if (splash) {
+        document.body.classList.add('splash-active');
+        enterBtn.focus();
+        function dismissSplash() {
+            if (splashDismissed) return;
+            splashDismissed = true;
+            splash.classList.add('hide');
+            document.body.classList.remove('splash-active');
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 800);
+        }
+        enterBtn.addEventListener('click', dismissSplash);
+        // Remove auto-dismiss timeout
+        // Optional: allow Enter key to dismiss
+        splash.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                dismissSplash();
+            }
+        });
+    }
+}); 
